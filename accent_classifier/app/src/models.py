@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import torch
 import torchaudio
+import pandas as pd
 from typing import List, Tuple, Optional
 from speechbrain.inference.interfaces import foreign_class
 from speechbrain.inference.classifiers import EncoderClassifier
@@ -14,6 +15,7 @@ class AccentClassifier:
     model_path: Path
     model_name: str = "warisqr7/accent-id-commonaccent_xlsr-en-english"
     hardware: str = "cpu"
+    model = None
 
     def __post_init__(self):
         self.model = self.load_model()
@@ -36,7 +38,7 @@ class AccentClassifier:
                 run_opts={"device": self.hardware},
             )
 
-        self.classifier = classifier
+        self.model = classifier
         return classifier
 
     def preprocess_audio(
@@ -131,13 +133,38 @@ class AccentClassifier:
         return self.process_batch_output(outputs)
 
     @staticmethod
-    def process_output(output: torch.Tensor) -> Tuple[torch.Tensor, float, int, str]:
-        # Add your output processing logic here
-        pass
+    def process_output(audio_path: str) -> dict:
+        _, score, _, text_lab = self.model.classify_file(
+            audio_path
+        )
+        return {
+            "prediction": text_lab[0],
+            "score": score
+        }
 
     @staticmethod
     def process_batch_output(
-        outputs: torch.Tensor,
-    ) -> Tuple[torch.Tensor, List[float], List[int], List[str]]:
-        # Add your batch output processing logic here
-        pass
+        df: pd.DataFrame,
+        processed_audio: list,
+        batch_size: int = 8
+    ) -> pd.DataFrame:
+
+        predictions = []
+        scores = []
+
+        if self.hardware == "cpu" and batch_size > 8:
+            batch_size = 8
+
+        for i in tqdm(range(0, len(processed_audio), batch_size)):
+            batch = processed_audio[i:i+batch_size]
+            waveforms = torch.from_numpy(batch).float()
+
+            # Use classify_batch for optimized inference
+            _, batch_scores, _, batch_preds = self.model.classify_batch(waveforms)
+            predictions.extend(batch_preds)
+            scores.extend(batch_scores)
+
+
+        df["prediction"] = predictions
+        df["score"] = [float(s) for s in scores]
+        return df
