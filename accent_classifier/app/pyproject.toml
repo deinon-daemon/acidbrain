@@ -1,0 +1,22 @@
+[project]
+name = "acidbrain"
+version = "2025.02.04"
+description = "accent classification rest API interface built on fastapi"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.110.0",
+    "python-multipart==0.0.9",
+    "uvicorn==0.27.1",
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    "speechbrain==0.5.16",
+    "numpy==1.26.4",
+    "pydantic==2.6.1",
+    "kagglehub==0.3.7",
+    "seaborn==0.13.2",
+    "librosa==0.10.2.post1",
+    "scikit-learn==1.6.1",
+]
+[tool.uv]
+[tool.ruff]

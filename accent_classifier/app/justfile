@@ -1,0 +1,11 @@
+local_image_name := "deinon/acidbrain"
+
+build-brain:
+    docker buildx build --platform linux/amd64 -t {{local_image_name}} .
+
+build-new-brain:
+    yes | docker builder prune -a
+    docker buildx build --platform linux/amd64 -t {{local_image_name}} .
+
+start-brain:
+    docker run -t {{local_image_name}}
