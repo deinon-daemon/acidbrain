@@ -6,11 +6,8 @@ import torchaudio
 import pandas as pd
 from tqdm import tqdm
 from typing import Tuple
-from dataclasses import dataclass
 from speechbrain.inference.classifiers import EncoderClassifier
 
-
-@dataclass
 class AccentClassifier:
     def __init__(self, model: EncoderClassifier):
         self.model = model
