@@ -12,7 +12,8 @@ from speechbrain.inference.classifiers import EncoderClassifier
 
 @dataclass
 class AccentClassifier:
-    model: EncoderClassifier
+    def __init__(self, model: EncoderClassifier):
+        self.model = model
 
     def preprocess_audio(
         self,
