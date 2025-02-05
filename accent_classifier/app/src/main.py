@@ -4,6 +4,7 @@ import torch
 import logging
 import asyncio
 import pandas as pd
+import traceback as tb
 from typing import List
 from models import AccentClassifier
 from fastapi.responses import JSONResponse
@@ -45,16 +46,10 @@ async def predict_accent(file: UploadFile = File(...)):
     prediction_response = {}
     loop = asyncio.get_event_loop()
     try:
-
-        print(f"Processing file: {file.filename}")
-        print(f"Content type: {file.content_type}")
-
+        logger.info(f"Processing file: {file.filename}")
+        logger.info(f"Content type: {file.content_type}")
         content = await file.read()
-        print(f"Content length: {len(content)} bytes")
-
-        # Try to log the first few bytes to see if content is valid
-        print(f"First few bytes: {content[:20]}")
-
+        logger.debug(f"Content length: {len(content)} bytes")
         prediction_response = await loop.run_in_executor(
             pool, lambda: classifier.classify_bytes(content)
         )
@@ -62,12 +57,9 @@ async def predict_accent(file: UploadFile = File(...)):
         print(f"Model : {int((time.time() - ts) * 1000)}ms")
         return PredictionResponse(**prediction_response)
     except Exception as e:
-        print(f"Error details: {str(e)}")
-        print(f"Error type: {type(e)}")
-        # Print full traceback
-        import traceback
-
-        print(f"Full traceback: {traceback.format_exc()}")
+        logger.warning(f"Error details: {str(e)}")
+        logger.warning(f"Error type: {type(e)}")
+        logger.error(f"Full traceback: {tb.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
