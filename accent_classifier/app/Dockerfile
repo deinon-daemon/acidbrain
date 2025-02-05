@@ -13,17 +13,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Create venv
-# Install py dependencies now (layer caching improved by multi-stage build)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
-
-
-
 # Copy requirements files
-COPY requirements.txt uv.lock pyproject.toml ./
+COPY uv.lock pyproject.toml ./
 
 # Copy application code
 COPY ./src /app/src
@@ -32,16 +23,8 @@ COPY ./src /app/src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-FROM python:3.11-slim-bookworm
-ENV APP_HOME=/app DOCKER_BUILDKIT=1
-# Set working directory
-WORKDIR /app
-
 # Create app user
 RUN useradd -m app
-
-# Copy the application from the builder
-COPY --from=builder --chown=app:app /app /app
 
 # Set PATH to include venv binaries
 ENV PATH="/app/.venv/bin:$PATH"

@@ -1,105 +1,97 @@
 # src/main.py
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
-from models import AccentClassifier
+import time
 import torch
-import torchaudio
-import numpy as np
-from pydantic import BaseModel
-from typing import List, Dict
 import logging
-from pathlib import Path
-import tempfile
+import asyncio
+import pandas as pd
+from typing import List
+from models import AccentClassifier
+from fastapi.responses import JSONResponse
+from concurrent.futures import ProcessPoolExecutor
+from speechbrain.inference.interfaces import foreign_class
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from rest_models import PredictionResponse  # , BatchPredictionRequest
+
 
 app = FastAPI(title="Accent Classification API")
 
 
-class PredictionResponse(BaseModel):
-    accent: str
-    confidence: float
-    all_predictions: Dict[str, float]
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
-class BatchPredictionRequest(BaseModel):
-    file_urls: List[str]
-
-
-@app.on_event("startup")
-async def load_model():
+def create_classifier_model():
     global classifier
-    try:
-        # Initialize your SpeechBrain classifier here
-        classifier = AccentClassifier.load_model()
-    except Exception as e:
-        logging.error(f"Failed to load model: {e}")
-        raise
+    device = "cuda" if torch.cuda_is_available() else "cpu"
+    accent_model = foreign_class(
+        source="warisqr7/accent-id-commonaccent_xlsr-en-english",
+        pymodule_file="custom_interface.py",
+        classname="CustomEncoderWav2vec2Classifier",
+        savedir="pretrained_model",
+        run_opts={"device": device},
+    )
+    accent_model.eval()
+    classifier = AccentClassifier(accent_model)
+
+
+pool = ProcessPoolExecutor(max_workers=1, initializer=create_classifier_model)
 
 
 @app.post("/predict/", response_model=PredictionResponse)
 async def predict_accent(file: UploadFile = File(...)):
+    ts = time.time()
+    prediction_response = {}
+    loop = asyncio.get_event_loop()
     try:
-        # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_path = temp_file.name
 
-        # Run prediction
-        out_prob, score, index, text_lab = classifier.classify_file(temp_path)
+        print(f"Processing file: {file.filename}")
+        print(f"Content type: {file.content_type}")
 
-        # Format response
-        predictions = {label: float(prob) for label, prob in zip(text_lab, out_prob[0])}
+        content = await file.read()
+        print(f"Content length: {len(content)} bytes")
 
-        return PredictionResponse(
-            accent=text_lab[0], confidence=float(score), all_predictions=predictions
+        # Try to log the first few bytes to see if content is valid
+        print(f"First few bytes: {content[:20]}")
+
+        prediction_response = await loop.run_in_executor(
+            pool, lambda: classifier.classify_bytes(content)
         )
-
+        prediction_response["filename"] = file.filename
+        print(f"Model : {int((time.time() - ts) * 1000)}ms")
+        return PredictionResponse(**prediction_response)
     except Exception as e:
+        print(f"Error details: {str(e)}")
+        print(f"Error type: {type(e)}")
+        # Print full traceback
+        import traceback
+
+        print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temp file
-        try:
-            Path(temp_path).unlink(missing_ok=True)
-        except Exception as _:
-            pass
 
 
 @app.post("/batch-predict/")
 async def batch_predict(files: List[UploadFile] = File(...)):
     predictions = []
-    temp_files = []
-
+    temp_data = []
+    ts = time.time()
     try:
-        # Save all files temporarily
-        for file in files:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                content = await file.read()
-                temp_file.write(content)
-                temp_files.append(temp_file.name)
+        processed_audio = []
+        # Save all files temporarily and keep track of filenames
+        for i, file in enumerate(files):
+            content = await file.read()
+            waveform, success = classifier.preprocess_audio(content)
+            processed_audio.append(waveform)
+            processed_audio.append(
+                {"index": i, "filename": file.filename, "preprocessing_status": success}
+            )
 
-        # Process in smaller batches for CPU
-        batch_size = 8  # Reduced batch size for CPU processing
-        for i in range(0, len(temp_files), batch_size):
-            batch = temp_files[i : i + batch_size]
-            batch_predictions = []
-
-            for file_path in batch:
-                out_prob, score, index, text_lab = classifier.classify_file(file_path)
-                batch_predictions.append(
-                    {
-                        "filename": Path(file_path).name,
-                        "accent": text_lab[0],
-                        "confidence": float(score),
-                    }
-                )
-
-            predictions.extend(batch_predictions)
-
+        # Assuming your batch predictions code here...
+        df = pd.DataFrame(temp_data)
+        predictions = AccentClassifier.classify_batch(df, processed_audio)
+        print(f"Model Batch Job : {int((time.time() - ts) * 1000)}ms")
         return JSONResponse(content={"predictions": predictions})
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temp files
-        for temp_file in temp_files:
-            Path(temp_file).unlink(missing_ok=True)

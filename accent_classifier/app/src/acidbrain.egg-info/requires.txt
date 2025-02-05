@@ -1,13 +1,13 @@
-# requirements.txt
+torch==2.2.0
+torchaudio==2.2.0
 fastapi==0.110.0
 python-multipart==0.0.9
 uvicorn==0.27.1
-torch==2.6.0
-torchaudio==2.6.0
-speechbrain==1.0.2
+speechbrain==0.5.16
 numpy==1.26.4
-pydantic==2.6.1
+pydantic==2.5.1
 kagglehub==0.3.7
 seaborn==0.13.2
 librosa==0.10.2.post1
 scikit-learn==1.6.1
+aiofiles==24.1.0
