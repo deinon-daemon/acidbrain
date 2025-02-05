@@ -6,12 +6,12 @@ import asyncio
 import pandas as pd
 import traceback as tb
 from typing import List
-from models import AccentClassifier
+from .models import AccentClassifier
 from fastapi.responses import JSONResponse
 from concurrent.futures import ProcessPoolExecutor
 from speechbrain.inference.interfaces import foreign_class
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from rest_models import PredictionResponse  # , BatchPredictionRequest
+from .rest_models import PredictionResponse  # , BatchPredictionRequest
 
 
 app = FastAPI(title="Accent Classification API")
@@ -79,9 +79,7 @@ async def batch_predict(files: List[UploadFile] = File(...)):
                 {"index": i, "filename": file.filename, "preprocessing_status": success}
             )
 
-        # Assuming your batch predictions code here...
-        df = pd.DataFrame(temp_data)
-        predictions = AccentClassifier.classify_batch(df, processed_audio)
+        predictions = classifier.classify_batch(df, processed_audio)
         print(f"Model Batch Job : {int((time.time() - ts) * 1000)}ms")
         return JSONResponse(content={"predictions": predictions})
 

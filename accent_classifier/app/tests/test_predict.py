@@ -3,18 +3,15 @@ import aiofiles
 import pytest_asyncio
 from pathlib import Path
 from httpx import AsyncClient
-from fastapi.testclient import TestClient
+# from fastapi.testclient import TestClient
 
-from main import app
+from src.main import test_client
 
 # Constants
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
 
 
-@pytest.fixture
-def test_client():
-    return TestClient(app)
 
 
 @pytest.fixture
@@ -26,13 +23,6 @@ def test_audio_files():
             files.append(file)
     return files
 
-
-@pytest_asyncio.fixture
-async def async_client():
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-
 async def create_test_file_payload(filepath):
     """Helper function to create file payload from filepath"""
     async with aiofiles.open(filepath, "rb") as f:
@@ -41,7 +31,7 @@ async def create_test_file_payload(filepath):
 
 
 @pytest.mark.asyncio
-async def test_single_file_prediction(async_client, test_audio_files):
+async def test_single_file_prediction(test_audio_files):
     """Test single file prediction endpoint"""
     if not test_audio_files:
         pytest.skip("No test audio files found in test_data directory")
@@ -51,7 +41,7 @@ async def test_single_file_prediction(async_client, test_audio_files):
         files = await create_test_file_payload(audio_file)
         print(f"File payload created, size: {len(files['file'][1])} bytes")
 
-        response = await async_client.post("/predict/", files=files)
+        response = test_client.post("/predict/", files=files)
 
         if response.status_code != 200:
             print(f"Error response: {response.text}")
@@ -60,7 +50,7 @@ async def test_single_file_prediction(async_client, test_audio_files):
 
 
 @pytest.mark.asyncio
-async def test_batch_prediction(async_client, test_audio_files):
+async def test_batch_prediction(test_audio_files):
     """Test batch prediction endpoint"""
     # Skip if not enough test files
     if len(test_audio_files) < 2:
@@ -72,7 +62,7 @@ async def test_batch_prediction(async_client, test_audio_files):
         file_payload = await create_test_file_payload(audio_file)
         files.append(("files", file_payload["file"]))
 
-    response = await async_client.post("/batch-predict/", files=files)
+    response = test_client.post("/batch-predict/", files=files)
 
     assert response.status_code == 200
     data = response.json()
@@ -84,7 +74,7 @@ async def test_batch_prediction(async_client, test_audio_files):
 
 
 @pytest.mark.asyncio
-async def test_prediction_performance(async_client, test_audio_files):
+async def test_prediction_performance(test_audio_files):
     """Test prediction endpoint performance"""
     import time
 
@@ -95,7 +85,7 @@ async def test_prediction_performance(async_client, test_audio_files):
     files = await create_test_file_payload(audio_file)
 
     start_time = time.time()
-    response = await async_client.post("/predict/", files=files)
+    response = test_client.post("/predict/", files=files)
     end_time = time.time()
 
     assert response.status_code == 200
