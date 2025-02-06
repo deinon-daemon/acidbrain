@@ -32,7 +32,7 @@ at the task at hand by Over Sampling data from the target class for improvement.
 
 Inside accent_classifier is the dockerized fastapi server to run inference and testing / eval on Speech Accent Archive data included in /test_data
 to replicate the service simply:
-bash```
+```
 cd accent_classifier/app
 docker compose up --build
 # (open docker desktop beforehand and now navigate to the container)
