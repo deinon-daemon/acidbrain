@@ -9,23 +9,25 @@ import torchaudio
 import librosa
 from hyperpyyaml import load_hyperpyyaml
 from torch.utils.data import WeightedRandomSampler
-from speechbrain.dataio.sampler import DynamicBatchSampler 
+from speechbrain.dataio.sampler import DynamicBatchSampler
 from speechbrain.utils.distributed import run_on_main
 from speechbrain.utils.checkpoints import Checkpointer
 from speechbrain.inference.interfaces import foreign_class
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2Model
 
 # Load pretrained Wav2Vec embeddings model & pretrained classifier we want to optimize
-feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained('facebook/wav2vec2-large-xlsr-53')
-embedding_model = Wav2Vec2Model.from_pretrained('facebook/wav2vec2-large-xlsr-53')
+feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
+    "facebook/wav2vec2-large-xlsr-53"
+)
+embedding_model = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-large-xlsr-53")
 
 classifier = foreign_class(
     source="warisqr7/accent-id-commonaccent_xlsr-en-english",
     pymodule_file="custom_interface.py",
     classname="CustomEncoderWav2vec2Classifier",
     savedir="pretrained_model",
-    run_opts="cpu" #{"device":"cuda"}  # or "cpu"
-    )
+    run_opts="cpu",  # {"device":"cuda"}  # or "cpu"
+)
 
 # c.f. https://github.com/JuanPZuluaga/accent-recog-slt2022/blob/main/CommonAccent/accent_id/train.py
 
@@ -40,124 +42,99 @@ train_df.to_csv("data/train.csv")
 test_df.to_csv("data/test.csv")
 eval_df.to_csv("data/valid.csv")
 data_folder = "./data"
-# loading dataset to the DynamicItemDataset class 
+# loading dataset to the DynamicItemDataset class
 # because sb docs says training is much faster if you do
 train_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-        csv_path="data/train.csv", replacements={"data_root": data_folder},
-    )
+    csv_path="data/train.csv",
+    replacements={"data_root": data_folder},
+)
 
 config = {
     # Basic configuration
-    'seed': 43,
-    
+    "seed": 43,
     # Paths and folders
-    'data_folder': "/root/.cache/kagglehub/datasets/rtatman/speech-accent-archive/versions/2",
-    'csv_prepared_folder': 'data/',
-    'output_folder': 'results/ECAPA-TDNN/43',
-    'save_folder': 'results/ECAPA-TDNN/43/save',
-    'rir_folder': 'data/rir_folder',
-    'train_log': 'results/ECAPA-TDNN/43/train_log.txt',
-    
+    "data_folder": "/root/.cache/kagglehub/datasets/rtatman/speech-accent-archive/versions/2",
+    "csv_prepared_folder": "data/",
+    "output_folder": "results/ECAPA-TDNN/43",
+    "save_folder": "results/ECAPA-TDNN/43/save",
+    "rir_folder": "data/rir_folder",
+    "train_log": "results/ECAPA-TDNN/43/train_log.txt",
     # Device and preprocessing
-    'device': 'cpu',
-    'skip_prep': True,
-    'avoid_if_longer_than': 35.0,
-    
+    "device": "cpu",
+    "skip_prep": True,
+    "avoid_if_longer_than": 35.0,
     # Pretrained embedding module
-    'ecapa_tdnn_hub': 'speechbrain/spkrec-ecapa-voxceleb/embedding_model.ckpt',
-    
+    "ecapa_tdnn_hub": "speechbrain/spkrec-ecapa-voxceleb/embedding_model.ckpt",
     # Feature parameters
-    'n_mels': 80,
-    'sample_rate': 16000,
-    
+    "n_mels": 80,
+    "sample_rate": 16000,
     # Training parameters
-    'number_of_epochs': 30,
-    'batch_size': 32,
-    'n_accents': 21,
-    'emb_dim': 192,
-    
+    "number_of_epochs": 30,
+    "batch_size": 32,
+    "n_accents": 21,
+    "emb_dim": 192,
     # Batching and workers
-    'sorting': 'random',
-    'dynamic_batching': True,
-    'max_batch_len': 600,
-    'num_bucket': 200,
-    'num_workers': 4,
-    
+    "sorting": "random",
+    "dynamic_batching": True,
+    "max_batch_len": 600,
+    "num_bucket": 200,
+    "num_workers": 4,
     # Augmentation and preprocessing
-    'apply_augmentation': False,
-    'load_pretrained': True,
-    
+    "apply_augmentation": False,
+    "load_pretrained": True,
     # Learning parameters
-    'lr': 0.0001,
-    
+    "lr": 0.0001,
     # Model architecture details
-    'embedding_model_config': {
-        'input_size': 80,
-        'activation': 'torch.nn.LeakyReLU',
-        'channels': [1024, 1024, 1024, 1024, 3072],
-        'kernel_sizes': [5, 3, 3, 3, 1],
-        'dilations': [1, 2, 3, 4, 1],
-        'attention_channels': 128,
-        'lin_neurons': 192
+    "embedding_model_config": {
+        "input_size": 80,
+        "activation": "torch.nn.LeakyReLU",
+        "channels": [1024, 1024, 1024, 1024, 3072],
+        "kernel_sizes": [5, 3, 3, 3, 1],
+        "dilations": [1, 2, 3, 4, 1],
+        "attention_channels": 128,
+        "lin_neurons": 192,
     },
-    
     # Optimization details
-    'optimizer': 'torch.optim.Adam',
-    'weight_decay': 0.000002,
-    
+    "optimizer": "torch.optim.Adam",
+    "weight_decay": 0.000002,
     # Learning rate scheduling
-    'lr_scheduler': {
-        'type': 'NewBobScheduler',
-        'initial_value': 0.0001,
-        'improvement_threshold': 0.0025,
-        'annealing_factor': 0.9,
-        'patient': 0
+    "lr_scheduler": {
+        "type": "NewBobScheduler",
+        "initial_value": 0.0001,
+        "improvement_threshold": 0.0025,
+        "annealing_factor": 0.9,
+        "patient": 0,
     },
-
-        # Dynamic Batch Sampler Configuration
-    'dynamic_batch_sampler': {
-        'max_batch_len': 600,
-        'max_batch_len_val': 600,
-        'num_buckets': 200,
-        'shuffle_ex': True,
-        'batch_ordering': 'random',
-        'max_batch_ex': 128
+    # Dynamic Batch Sampler Configuration
+    "dynamic_batch_sampler": {
+        "max_batch_len": 600,
+        "max_batch_len_val": 600,
+        "num_buckets": 200,
+        "shuffle_ex": True,
+        "batch_ordering": "random",
+        "max_batch_ex": 128,
     },
-    
     # Dataloader options with consistent configurations
-    'dataloader_opts': {
-        'train': {
-            'batch_size': 32,
-            'num_workers': 4
-        },
-        'valid': {
-            'batch_size': 32,
-            'num_workers': 4
-        },
-        'test': {
-            'batch_size': 32,
-            'num_workers': 4
-        }
-    }, 
-    "train_dataloader_opts": {
-          'batch_size': 32,
-          'num_workers': 4
-      },
-    "valid_dataloader_opts": {
-          'batch_size': 32,
-          'num_workers': 4
-      }
+    "dataloader_opts": {
+        "train": {"batch_size": 32, "num_workers": 4},
+        "valid": {"batch_size": 32, "num_workers": 4},
+        "test": {"batch_size": 32, "num_workers": 4},
+    },
+    "train_dataloader_opts": {"batch_size": 32, "num_workers": 4},
+    "valid_dataloader_opts": {"batch_size": 32, "num_workers": 4},
 }
 
 
 valid_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-    csv_path="data/valid.csv", replacements={"data_root": data_folder},
+    csv_path="data/valid.csv",
+    replacements={"data_root": data_folder},
 )
 # We also sort the validation data so it is faster to validate
 valid_data = valid_data.filtered_sorted(sort_key="duration")
 
 test_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-    csv_path="data/test.csv", replacements={"data_root": data_folder},
+    csv_path="data/test.csv",
+    replacements={"data_root": data_folder},
 )
 # We also sort the test data so it is faster to validate
 test_data = test_data.filtered_sorted(sort_key="duration")
@@ -168,6 +145,7 @@ datasets = [train_data, valid_data, test_data]
 # of the observed label a unique index (e.g, 'accent01': 0, 'accent02': 1, ..)
 accent_encoder = sb.dataio.encoder.CategoricalEncoder()
 
+
 # 2. Define audio pipeline:
 @sb.utils.data_pipeline.takes("wav")
 @sb.utils.data_pipeline.provides("sig")
@@ -175,12 +153,14 @@ def audio_pipeline(wav):
     """Load the signal, and pass it and its length to the corruption class.
     This is done on the CPU in the `collate_fn`."""
     # sig, _ = torchaudio.load(wav)
-    # sig = sig.transpose(0, 1).squeeze(1)        
+    # sig = sig.transpose(0, 1).squeeze(1)
     sig, _ = librosa.load(wav, sr=hparams["sample_rate"])
     sig = torch.tensor(sig)
     return sig
 
+
 sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline)
+
 
 # 3. Define label pipeline:
 @sb.utils.data_pipeline.takes("accent")
@@ -190,11 +170,13 @@ def label_pipeline(accent):
     accent_encoded = accent_encoder.encode_label_torch(accent)
     yield accent_encoded
 
+
 sb.dataio.dataset.add_dynamic_item(datasets, label_pipeline)
 
 # 4. Set output:
 sb.dataio.dataset.set_output_keys(
-    datasets, ["id", "sig", "accent_encoded"],
+    datasets,
+    ["id", "sig", "accent_encoded"],
 )
 
 # Load or compute the label encoder (with multi-GPU DDP support)
@@ -211,7 +193,6 @@ accent_encoder.load_or_create(
 # 5. If Dynamic Batching is used, we instantiate the needed samplers.
 train_batch_sampler = None
 valid_batch_sampler = None
-
 
 
 dynamic_hparams = config["dynamic_batch_sampler"]
@@ -244,12 +225,12 @@ sb.create_experiment_directory(
 
 # Create pretrainer directly
 pretrainer = Pretrainer(
-    collect_in=config['save_folder'],
-    loadables={'embedding_model': config['ecapa_tdnn_hub']},
-    paths={'embedding_model': config['ecapa_tdnn_hub']}
+    collect_in=config["save_folder"],
+    loadables={"embedding_model": config["ecapa_tdnn_hub"]},
+    paths={"embedding_model": config["ecapa_tdnn_hub"]},
 )
 
-config['pretrainer'] = pretrainer
+config["pretrainer"] = pretrainer
 
 # we sort training data to speed up training and get better results.
 train_data = train_data.filtered_sorted(
@@ -259,45 +240,50 @@ train_data = train_data.filtered_sorted(
 # when sorting do not shuffle in dataloader ! otherwise is pointless
 config["train_dataloader_opts"]["shuffle"] = False
 
+
 class FocalLoss(torch.nn.Module):
     """Focal Loss for handling class imbalance."""
+
     def __init__(self, alpha: float = 0.25, gamma: float = 2.0):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        ce_loss = F.cross_entropy(inputs, targets, reduction="none")
         pt = torch.exp(-ce_loss)
-        focal_loss = self.alpha * (1-pt)**self.gamma * ce_loss
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
         return focal_loss.mean()
+
 
 # Feature Extraction
 compute_features = sb.lobes.features.Fbank(n_mels=80)
 
 # Input Normalization
 mean_var_norm_input = sb.processing.features.InputNormalization(
-    norm_type='sentence', 
-    std_norm=False
+    norm_type="sentence", std_norm=False
 )
 
 # Epoch Counter
 epoch_counter = sb.utils.epoch_loop.EpochCounter(
-    limit=config['number_of_epochs']  # Using the total number of epochs from your config
+    limit=config[
+        "number_of_epochs"
+    ]  # Using the total number of epochs from your config
 )
 
 checkpointer = Checkpointer(
-    checkpoints_dir=config['save_folder'],
+    checkpoints_dir=config["save_folder"],
     recoverables={
-        'normalizer_input': mean_var_norm_input,
-        'embedding_model': embedding_model,
-        'classifier': classifier,
-        'counter': epoch_counter
-    }
+        "normalizer_input": mean_var_norm_input,
+        "embedding_model": embedding_model,
+        "classifier": classifier,
+        "counter": epoch_counter,
+    },
 )
 
 # Then update the config
-config['checkpointer'] = checkpointer
+config["checkpointer"] = checkpointer
+
 
 class EnhancedAccentID(sb.Brain):
     def prepare_features(self, wavs, stage):
@@ -409,7 +395,6 @@ class EnhancedAccentID(sb.Brain):
 
         return loss.detach()
 
-
     def on_stage_start(self, stage, epoch=None):
         """Gets called at the beginning of each epoch.
 
@@ -470,9 +455,7 @@ class EnhancedAccentID(sb.Brain):
             )
 
             # Save the current checkpoint and delete previous checkpoints,
-            self.checkpointer.save_and_keep_only(
-                meta=stats, min_keys=["error_rate"]
-            )
+            self.checkpointer.save_and_keep_only(meta=stats, min_keys=["error_rate"])
 
         # We also write statistics about test data to stdout and to the logfile.
         if stage == sb.Stage.TEST:
@@ -495,9 +478,16 @@ class EnhancedAccentID(sb.Brain):
 def create_weighted_sampler(dataset, accent_key="accent"):
     """Create a weighted sampler to handle class imbalance."""
     accent_list = [item[accent_key] for item in dataset.data.values()]
-    class_counts = torch.bincount(torch.tensor([dataset.label_encoder.encode_label(accent) for accent in accent_list]))
-    class_weights = 1. / class_counts.float()
-    sample_weights = [class_weights[dataset.label_encoder.encode_label(accent)] for accent in accent_list]
+    class_counts = torch.bincount(
+        torch.tensor(
+            [dataset.label_encoder.encode_label(accent) for accent in accent_list]
+        )
+    )
+    class_weights = 1.0 / class_counts.float()
+    sample_weights = [
+        class_weights[dataset.label_encoder.encode_label(accent)]
+        for accent in accent_list
+    ]
     return WeightedRandomSampler(sample_weights, len(sample_weights), replacement=True)
 
 
@@ -522,68 +512,63 @@ def get_run_opts():
 
 
 if __name__ == "__main__":
-  run_opts = get_run_opts()
-  hparams = config
-  
-  hparams.update({
-      # Modules configuration
-      'modules': {
-          'compute_features': compute_features,  # Assuming this is defined earlier
-          'embedding_model': embedding_model,  # Your ECAPA-TDNN model
-          'mean_var_norm_input': mean_var_norm_input,  # Input normalization
-          'classifier': classifier  # Accent classifier
-      },
-  
-      # Model as a ModuleList
-      'model': torch.nn.ModuleList([embedding_model, classifier]),
-  
-      # Loss configuration
-      'compute_cost': {
-          'type': 'LogSoftmaxWrapper',
-          'loss_fn': {
-              'type': 'AdditiveAngularMargin',
-              'margin': 0.2,
-              'scale': 30
-          }
-      },
-  
-      # Optimizer configuration
-      'lr': 0.0001,
-      'opt_class': torch.optim.Adam,
-      'weight_decay': 0.000002,
-  
-      # Learning rate scheduling
-      'lr_annealing': {
-          'type': 'NewBobScheduler',
-          'initial_value': 0.0001,
-          'improvement_threshold': 0.0025,
-          'annealing_factor': 0.9,
-          'patient': 0
-      },
-  })
-  
-  # Initialize brain object
-  aid_brain = EnhancedAccentID(
-      modules=hparams["modules"],
-      hparams=hparams,
-      run_opts=run_opts,
-      checkpointer=hparams["checkpointer"],
-  )
-  
-  
-  aid_brain.fit(
-      epoch_counter=epoch_counter,
-      train_set=train_data,
-      valid_set=valid_data,
-      train_loader_kwargs=hparams["train_dataloader_opts"],
-      valid_loader_kwargs=hparams["valid_dataloader_opts"],
-  
-  )
-  
-  
-  # Final evaluation
-  aid_brain.evaluate(
-      test_data,
-      min_key="error_rate",
-      test_loader_kwargs=hparams["test_dataloader_opts"],
-  )
+    run_opts = get_run_opts()
+    hparams = config
+
+    hparams.update(
+        {
+            # Modules configuration
+            "modules": {
+                "compute_features": compute_features,  # Assuming this is defined earlier
+                "embedding_model": embedding_model,  # Your ECAPA-TDNN model
+                "mean_var_norm_input": mean_var_norm_input,  # Input normalization
+                "classifier": classifier,  # Accent classifier
+            },
+            # Model as a ModuleList
+            "model": torch.nn.ModuleList([embedding_model, classifier]),
+            # Loss configuration
+            "compute_cost": {
+                "type": "LogSoftmaxWrapper",
+                "loss_fn": {
+                    "type": "AdditiveAngularMargin",
+                    "margin": 0.2,
+                    "scale": 30,
+                },
+            },
+            # Optimizer configuration
+            "lr": 0.0001,
+            "opt_class": torch.optim.Adam,
+            "weight_decay": 0.000002,
+            # Learning rate scheduling
+            "lr_annealing": {
+                "type": "NewBobScheduler",
+                "initial_value": 0.0001,
+                "improvement_threshold": 0.0025,
+                "annealing_factor": 0.9,
+                "patient": 0,
+            },
+        }
+    )
+
+    # Initialize brain object
+    aid_brain = EnhancedAccentID(
+        modules=hparams["modules"],
+        hparams=hparams,
+        run_opts=run_opts,
+        checkpointer=hparams["checkpointer"],
+    )
+
+    aid_brain.fit(
+        epoch_counter=epoch_counter,
+        train_set=train_data,
+        valid_set=valid_data,
+        train_loader_kwargs=hparams["train_dataloader_opts"],
+        valid_loader_kwargs=hparams["valid_dataloader_opts"],
+    )
+
+    # Final evaluation
+    aid_brain.evaluate(
+        test_data,
+        min_key="error_rate",
+        test_loader_kwargs=hparams["test_dataloader_opts"],
+    )
