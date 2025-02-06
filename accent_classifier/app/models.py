@@ -6,7 +6,9 @@ import torchaudio
 import pandas as pd
 from tqdm import tqdm
 from typing import Tuple
+from torch.nn.utils.rnn import pad_sequence
 from speechbrain.inference.classifiers import EncoderClassifier
+
 
 class AccentClassifier:
     def __init__(self, model: EncoderClassifier):
@@ -90,7 +92,7 @@ class AccentClassifier:
                 start = (current_samples - target_samples) // 2
                 waveform = waveform[:, start : start + target_samples]
 
-            return waveform.numpy().squeeze(), True
+            return waveform, True
 
         except Exception as e:
             print(f"Unexpected error processing {filepath}: {e}")
@@ -107,29 +109,21 @@ class AccentClassifier:
             dict: Classification results from the model
         """
 
-        # Move to the same device as the model
-        waveform = waveform.to(self.model.device)
-
         # Process the audio through the model
         # Note: We bypass classify_file() and use the internal processing directly
         # so we don't have to save audio data to fs and slow the worker / server w/
         # excessive reads and writes
-        features = self.model.mods.compute_features(waveform)
-        embeddings = self.model.mods.embedding_model(features)
-        outputs = self.model.mods.classifier(embeddings)
-
-        # Get predictions
-        probs = torch.softmax(outputs, dim=-1)
-        score, pred_idx = torch.max(probs, dim=-1)
-
-        # Convert prediction to label using the model's label encoder
-        predicted_label = self.model.hparams.label_encoder.decode_ndim(pred_idx)
+        outputs = self.model.encode_batch(waveform)
+        outputs = self.model.mods.output_mlp(outputs)
+        out_prob = self.model.hparams.softmax(outputs)
+        score, index = torch.max(out_prob, dim=-1)
+        text_lab = self.model.hparams.label_encoder.decode_torch(index)
 
         return {
-            "prediction": predicted_label,
+            "prediction": text_lab,
             "score": score.item(),
-            "probabilities": probs.squeeze().tolist(),
-            "embeddings": embeddings.squeeze().tolist(),
+            "probabilities": out_prob.tolist(),
+            "embeddings": outputs.tolist(),
         }
 
     def classify_bytes(self, audio_bytes: str) -> Tuple[torch.Tensor, float, int, str]:
@@ -139,23 +133,41 @@ class AccentClassifier:
     def classify_batch(
         self, df: pd.DataFrame, processed_audio: list, batch_size: int = 8
     ) -> pd.DataFrame:
-
         predictions = []
         scores = []
-
         if self.model.device == "cuda":
             print(f"Optimizing batch size for gpu {batch_size} => 32")
             batch_size = 32
 
         for i in tqdm(range(0, len(processed_audio), batch_size)):
-            batch = processed_audio[i : i + batch_size]
-            waveforms = torch.from_numpy(batch).float()
+                batch = processed_audio[i : i + batch_size]
 
-            # Use classify_batch for optimized inference
-            _, batch_scores, _, batch_preds = self.model.classify_batch(waveforms)
-            predictions.extend(batch_preds)
-            scores.extend(batch_scores)
+                # Process each waveform in the batch individually
+                for b in batch:
+                    # Convert waveform to tensor
+                    waveform = b.clone().detach()  # Fix tensor conversion warning
 
+                    # Ensure the waveform is mono (1 channel)
+                    if waveform.dim() == 2:  # Stereo audio (2, length)
+                        waveform = waveform.mean(dim=0)  # Convert to mono by averaging channels
+                    elif waveform.dim() == 1:  # Mono audio (length,)
+                        waveform = waveform.unsqueeze(0)  # Add a channel dimension
+
+                    # Move waveform to the same device as the model
+                    waveform = waveform.to(self.model.device)
+
+                    # Classify the waveform
+                    output = self.model.encode_batch(waveform.unsqueeze(0))  # Add batch dimension
+                    output = self.model.mods.output_mlp(output).squeeze(1)
+                    out_prob = self.model.hparams.softmax(output)
+                    score, index = torch.max(out_prob, dim=-1)
+                    pred = self.model.hparams.label_encoder.decode_torch(index)
+
+                    # Append results
+                    predictions.append(pred[0])  # Extract prediction from batch
+                    scores.append(score.item())
+
+        # Add predictions and scores to the DataFrame
         df["prediction"] = predictions
-        df["score"] = [float(s) for s in scores]
+        df["score"] = scores
         return df

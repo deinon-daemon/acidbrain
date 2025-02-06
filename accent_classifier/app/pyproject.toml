@@ -3,11 +3,11 @@ name = "acidbrain"
 version = "2025.02.04"
 description = "accent classification rest API interface built on fastapi"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10.4"
 dependencies = [
-    "torch==2.2.0",
-    "torchaudio==2.2.0",
-    "fastapi==0.110.0",
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    "fastapi==0.115.8",
     "python-multipart==0.0.9",
     "uvicorn==0.27.1",
     "speechbrain==1.0.2",
@@ -24,6 +24,7 @@ dependencies = [
     "ffmpeg-python==0.2.0",
     "future==1.0.0",
     "httpx>=0.28.1",
+    "transformers==4.48.2",
 ]
 [tool.uv]
 [tool.ruff]

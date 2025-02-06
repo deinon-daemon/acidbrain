@@ -1,0 +1,26 @@
+Metadata-Version: 2.2
+Name: acidbrain
+Version: 2025.2.4
+Summary: accent classification rest API interface built on fastapi
+Requires-Python: >=3.10.4
+Description-Content-Type: text/markdown
+Requires-Dist: torch==2.6.0
+Requires-Dist: torchaudio==2.6.0
+Requires-Dist: fastapi==0.115.8
+Requires-Dist: python-multipart==0.0.9
+Requires-Dist: uvicorn==0.27.1
+Requires-Dist: speechbrain==1.0.2
+Requires-Dist: numpy==1.26.4
+Requires-Dist: pydantic==2.5.1
+Requires-Dist: kagglehub==0.3.7
+Requires-Dist: seaborn==0.13.2
+Requires-Dist: librosa==0.10.2.post1
+Requires-Dist: scikit-learn==1.6.1
+Requires-Dist: aiofiles==24.1.0
+Requires-Dist: pytest==8.3.4
+Requires-Dist: pytest-asyncio==0.25.3
+Requires-Dist: ffmpeg==1.4
+Requires-Dist: ffmpeg-python==0.2.0
+Requires-Dist: future==1.0.0
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: transformers==4.48.2

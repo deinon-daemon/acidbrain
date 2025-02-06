@@ -3,7 +3,7 @@ from typing import List
 
 
 class PredictionResponse(BaseModel):
-    prediction: str
+    prediction: str | List[str]
     score: float
     filename: str | None = None
     probabilities: list | None = None

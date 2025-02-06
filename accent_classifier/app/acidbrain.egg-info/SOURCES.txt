@@ -1,0 +1,6 @@
+pyproject.toml
+acidbrain.egg-info/PKG-INFO
+acidbrain.egg-info/SOURCES.txt
+acidbrain.egg-info/dependency_links.txt
+acidbrain.egg-info/requires.txt
+acidbrain.egg-info/top_level.txt

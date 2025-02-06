@@ -1,14 +1,11 @@
 import pytest
 import aiofiles
-import pytest_asyncio
 from pathlib import Path
-from httpx import AsyncClient
-# from fastapi.testclient import TestClient
-
-from src.main import test_client
-
+from fastapi.testclient import TestClient
+from main import app
+test_client = TestClient(app)
 # Constants
-TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
+TEST_DATA_DIR = Path(__file__).parent / "test_data"
 SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
 
 
